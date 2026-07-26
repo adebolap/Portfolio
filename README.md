@@ -4,6 +4,10 @@ Welcome to my portfolio! Here you will find a collection of my projects in data 
 
 ## Projects
 
+### [drive-data-stripper](./drive-data-stripper)
+- **Description:** A guided Python CLI that strips proprietary data and file metadata from a document before it's shared with a frontier model, with a reversible "scaffold" mode that swaps sensitive values for placeholder tokens and restores them afterward.
+- **Technologies:** Python, Click, Pillow, pypdf, python-docx, openpyxl, cryptography
+
 ### [Data-Quality-Improvement](https://github.com/adebolap/Data-Quality-Improvement)
 - **Description:** A project demonstrating data quality improvement techniques, achieving a 30% increase in data accuracy.
 - **Technologies:** Python, SQL, Power BI
