@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import content, metadata, proprietary, scaffold
+from . import content, metadata, powerbi, proprietary, scaffold
 
 MODES = ("strip", "scaffold", "metadata-only")
 
@@ -75,8 +75,12 @@ def process_file(
                     content.write_text(pdf_sidecar, new_text)
         elif suffix == ".docx":
             content.write_docx_text(destination, destination, transform)
+        elif suffix == ".pptx":
+            content.write_pptx_text(destination, destination, transform)
         elif suffix == ".xlsx":
             content.write_xlsx_text(destination, destination, transform)
+        elif suffix in powerbi.SUFFIXES:
+            powerbi.process_power_bi_package(destination, destination, transform)
         elif content.is_text_extractable(source):
             text = destination.read_text(errors="replace")
             destination.write_text(transform(text))

@@ -63,15 +63,35 @@ model** - it's the only place the original sensitive values are kept.
 
 | Type          | Metadata stripped           | Content scanned/redacted |
 |---------------|------------------------------|---------------------------|
-| `.txt/.md/.csv/.json/.py/.log/.yaml/.yml/.bim` | n/a | yes, in place |
+| `.txt/.md/.csv/.json/.py/.log/.yaml/.yml/.bim/.pbids` | n/a | yes, in place |
 | `.docx`       | author, title, company, ...  | yes, per paragraph |
+| `.pptx`       | author, title, company, ...  | yes: shape text, table cells, group shapes, speaker notes |
 | `.xlsx`       | creator, company, ...        | yes, per cell |
+| `.pbix/.pbit` | n/a                          | yes, but only the plain-JSON parts of the package (see below) - not the imported data model |
 | `.jpg/.png/.tiff/.webp` | EXIF/GPS and other embedded info | no text layer |
 | `.pdf`        | document info dictionary      | read-only: redacted text is written to a `.redacted.txt` sidecar, since rewriting a PDF's content streams in place is out of scope |
 
 `.bim` is treated as plain JSON text (SSAS Tabular Model files are JSON since
 Analysis Services 2016+). Older XML-format `.bim` files aren't parsed
-specially, but are still scanned as raw text.
+specially, but are still scanned as raw text. `.pbids` (a Power BI data
+source file) is also plain JSON and is scanned the same way - useful since
+it's where a server/database connection string usually lives.
+
+### Power BI (`.pbix`/`.pbit`) scope
+
+A `.pbix`/`.pbit` is a ZIP package. Most of a `.pbix` is the compressed
+Vertipaq/xVelocity data model holding the actual imported table data - a
+proprietary binary format this tool can't safely parse, so **imported data
+is never scanned or redacted**. What it does scan and redact, in place
+inside the package, is the small set of parts documented (via community
+reverse-engineering) to be plain JSON: `Report/Layout` (visual titles and
+any static report text), `Connections` (data source connection strings -
+where server/database names usually leak), `DataModelSchema` (table/measure
+definitions in `.pbit` templates and JSON-schema `.pbix` files), and
+`Metadata`. Every other part of the package, including the binary data
+model, is copied through byte-for-byte unchanged - and each JSON part is
+only written back if it still parses as valid JSON after redaction, so a
+malformed rewrite can never corrupt the package.
 
 ## Library usage
 

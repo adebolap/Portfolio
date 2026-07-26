@@ -53,6 +53,38 @@ def test_strip_mode_on_bim_file_redacts_json_text(tmp_path: Path):
     assert "SalesModel" in text  # only the matched span is redacted, not the whole file
 
 
+def test_strip_mode_on_pbids_file_redacts_connection_json(tmp_path: Path):
+    source = tmp_path / "source.pbids"
+    source.write_text('{"connections": [{"details": {"address": {"server": "10.0.4.22"}}}]}')
+    dest = tmp_path / "source.sanitized.pbids"
+
+    result = process_file(source, dest, mode="strip", categories=("ipv4",))
+
+    assert result.matches_found == 1
+    text = dest.read_text()
+    assert "10.0.4.22" not in text
+    assert "connections" in text
+
+
+def test_strip_mode_on_pptx_redacts_slide_text(tmp_path: Path):
+    from pptx import Presentation
+
+    source = tmp_path / "deck.pptx"
+    dest = tmp_path / "deck.sanitized.pptx"
+
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide.shapes.add_textbox(0, 0, 900000, 900000).text_frame.text = "contact jane@acme.com"
+    prs.save(source)
+
+    result = process_file(source, dest, mode="strip", categories=("email",))
+
+    assert result.matches_found == 1
+    sanitized = Presentation(str(dest))
+    shape_text = sanitized.slides[0].shapes[0].text_frame.text
+    assert "jane@acme.com" not in shape_text
+
+
 def test_metadata_only_mode_leaves_content_untouched(tmp_path: Path):
     source = tmp_path / "notes.txt"
     source.write_text("email jane@acme.com")

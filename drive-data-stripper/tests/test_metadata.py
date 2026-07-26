@@ -65,6 +65,23 @@ def test_strip_xlsx_metadata_clears_creator(tmp_path: Path):
     assert clean_wb.properties.creator in ("", None)
 
 
+def test_strip_pptx_metadata_clears_author(tmp_path: Path):
+    from pptx import Presentation
+
+    source = tmp_path / "deck.pptx"
+    dest = tmp_path / "deck.clean.pptx"
+
+    prs = Presentation()
+    prs.core_properties.author = "Acme Corp"
+    prs.save(source)
+
+    handled = metadata.strip_metadata(source, dest)
+    assert handled is True
+
+    clean_prs = Presentation(str(dest))
+    assert clean_prs.core_properties.author == ""
+
+
 def test_unsupported_type_is_copied_through(tmp_path: Path):
     source = tmp_path / "notes.txt"
     dest = tmp_path / "notes.clean.txt"

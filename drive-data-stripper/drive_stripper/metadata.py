@@ -15,6 +15,21 @@ SUPPORTED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".tiff", ".tif", ".webp"}
 SUPPORTED_PDF_SUFFIXES = {".pdf"}
 SUPPORTED_DOCX_SUFFIXES = {".docx"}
 SUPPORTED_XLSX_SUFFIXES = {".xlsx"}
+SUPPORTED_PPTX_SUFFIXES = {".pptx"}
+
+_OFFICE_CORE_PROPERTY_FIELDS = (
+    "author",
+    "category",
+    "comments",
+    "content_status",
+    "identifier",
+    "keywords",
+    "language",
+    "last_modified_by",
+    "subject",
+    "title",
+    "version",
+)
 
 
 class UnsupportedFileTypeError(ValueError):
@@ -47,22 +62,18 @@ def strip_docx_metadata(source: Path, destination: Path) -> None:
     from docx import Document
 
     doc = Document(str(source))
-    props = doc.core_properties
-    for field in (
-        "author",
-        "category",
-        "comments",
-        "content_status",
-        "identifier",
-        "keywords",
-        "language",
-        "last_modified_by",
-        "subject",
-        "title",
-        "version",
-    ):
-        setattr(props, field, "")
+    for field in _OFFICE_CORE_PROPERTY_FIELDS:
+        setattr(doc.core_properties, field, "")
     doc.save(str(destination))
+
+
+def strip_pptx_metadata(source: Path, destination: Path) -> None:
+    from pptx import Presentation
+
+    prs = Presentation(str(source))
+    for field in _OFFICE_CORE_PROPERTY_FIELDS:
+        setattr(prs.core_properties, field, "")
+    prs.save(str(destination))
 
 
 def strip_xlsx_metadata(source: Path, destination: Path) -> None:
@@ -90,6 +101,7 @@ _HANDLERS = {
     **{suf: strip_pdf_metadata for suf in SUPPORTED_PDF_SUFFIXES},
     **{suf: strip_docx_metadata for suf in SUPPORTED_DOCX_SUFFIXES},
     **{suf: strip_xlsx_metadata for suf in SUPPORTED_XLSX_SUFFIXES},
+    **{suf: strip_pptx_metadata for suf in SUPPORTED_PPTX_SUFFIXES},
 }
 
 
