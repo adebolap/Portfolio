@@ -40,6 +40,19 @@ def test_scaffold_mode_on_text_file_is_reversible(tmp_path: Path):
     assert restored == original
 
 
+def test_strip_mode_on_bim_file_redacts_json_text(tmp_path: Path):
+    source = tmp_path / "model.bim"
+    source.write_text('{"name": "SalesModel", "owner": "jane@acme.com"}')
+    dest = tmp_path / "model.sanitized.bim"
+
+    result = process_file(source, dest, mode="strip")
+
+    assert result.matches_found == 1
+    text = dest.read_text()
+    assert "jane@acme.com" not in text
+    assert "SalesModel" in text  # only the matched span is redacted, not the whole file
+
+
 def test_metadata_only_mode_leaves_content_untouched(tmp_path: Path):
     source = tmp_path / "notes.txt"
     source.write_text("email jane@acme.com")

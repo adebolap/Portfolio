@@ -15,6 +15,13 @@ def test_read_text_returns_none_for_image(tmp_path: Path):
     assert content.read_text(path) is None
 
 
+def test_read_text_bim_file_treated_as_json_text(tmp_path: Path):
+    path = tmp_path / "model.bim"
+    path.write_text('{"name": "SalesModel", "owner": "jane@acme.com"}')
+    assert content.read_text(path) == '{"name": "SalesModel", "owner": "jane@acme.com"}'
+    assert content.is_text_extractable(path) is True
+
+
 def test_write_docx_text_replaces_paragraph(tmp_path: Path):
     from docx import Document
 

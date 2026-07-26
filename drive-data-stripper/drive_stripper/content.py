@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-TEXT_SUFFIXES = {".txt", ".md", ".csv", ".json", ".py", ".log", ".yaml", ".yml"}
+TEXT_SUFFIXES = {".txt", ".md", ".csv", ".json", ".py", ".log", ".yaml", ".yml", ".bim"}
 
 
 def is_text_extractable(path: Path) -> bool:

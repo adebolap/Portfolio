@@ -63,11 +63,15 @@ model** - it's the only place the original sensitive values are kept.
 
 | Type          | Metadata stripped           | Content scanned/redacted |
 |---------------|------------------------------|---------------------------|
-| `.txt/.md/.csv/.json/.py/.log/.yaml/.yml` | n/a | yes, in place |
+| `.txt/.md/.csv/.json/.py/.log/.yaml/.yml/.bim` | n/a | yes, in place |
 | `.docx`       | author, title, company, ...  | yes, per paragraph |
 | `.xlsx`       | creator, company, ...        | yes, per cell |
 | `.jpg/.png/.tiff/.webp` | EXIF/GPS and other embedded info | no text layer |
 | `.pdf`        | document info dictionary      | read-only: redacted text is written to a `.redacted.txt` sidecar, since rewriting a PDF's content streams in place is out of scope |
+
+`.bim` is treated as plain JSON text (SSAS Tabular Model files are JSON since
+Analysis Services 2016+). Older XML-format `.bim` files aren't parsed
+specially, but are still scanned as raw text.
 
 ## Library usage
 
