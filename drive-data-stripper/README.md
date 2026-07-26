@@ -19,8 +19,16 @@ the model's response comes back.
 ## Install
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev]"          # core + test dependencies
+pip install -e ".[ocr]"          # + OCR support for images (also needs the tesseract-ocr system package)
+pip install -e ".[web]"          # + the local web UI
 ```
+
+OCR needs the Tesseract OCR engine installed separately - it's a system
+binary, not a Python package: `apt install tesseract-ocr` (Debian/Ubuntu) or
+`brew install tesseract` (macOS). Without it, image files still get their
+EXIF/metadata stripped, but text baked into the pixels isn't scanned; the
+CLI prints a clear warning when that happens rather than silently skipping it.
 
 ## Guided usage
 
@@ -46,6 +54,71 @@ With no other flags, you'll be walked through:
 Every flag can also be passed directly (`--mode`, `--category`, `--term`,
 `--output`, `--mapping-out`, `--passphrase`, `--yes` to skip prompts).
 
+### Reviewing matches before they're acted on
+
+Regex-based detection is inherently approximate - a phone-shaped ID or an
+internal reference number can look like a match. Add `--review` to see each
+detected match with ~30 characters of surrounding context and confirm it
+individually before it's redacted or scaffolded:
+
+```bash
+drive-strip strip --file report.docx --review
+```
+
+Credit card matches are already filtered through a Luhn checksum so
+arbitrary digit runs aren't flagged in the first place; phone matches are
+marked `medium` confidence in review since that pattern is intentionally
+broad.
+
+### Sanitizing a whole directory
+
+```bash
+drive-strip batch --input-dir ./to_share --output-dir ./sanitized --mode strip
+```
+
+Mirrors the input directory's structure into `--output-dir`, processing
+every file it finds (recursively by default - use `--no-recursive` to stay
+in the top level). Scaffold-mode mappings are written next to each
+sanitized file as `<file>.scaffold-map.json`. A file that fails to process
+(corrupt, unsupported, whatever) is reported and skipped - it doesn't abort
+the rest of the batch.
+
+### A local web UI
+
+```bash
+drive-strip web
+```
+
+Opens a form at `http://127.0.0.1:5000` - upload a file, pick a mode and
+categories, download the sanitized result (scaffold mode downloads a zip
+with the mapping file included). It's a single-user, stateless alternative
+to the CLI wizard for anyone who'd rather use a browser: no auth, no
+persisted history, meant for localhost only, not for hosting as a shared
+service.
+
+### Sharing scaffold mappings with a team
+
+A passphrase works for one person. For a team or an automated pipeline,
+generate a key file instead and distribute it through your existing secrets
+manager:
+
+```bash
+drive-strip keygen --output team.key
+drive-strip strip --file report.docx --mode scaffold --key-file team.key
+drive-strip restore --response model_reply.txt --mapping report.sanitized.docx.scaffold-map.json --key-file team.key
+```
+
+`--key-file` and `--passphrase` are mutually exclusive - use whichever
+matches how the mapping was encrypted.
+
+### Audit log
+
+Pass `--audit-log path/to/audit.log` to `strip`, `restore`, or `batch` to
+append a JSON-lines record of each operation: timestamp, source/output
+paths, mode, categories, and match counts *by category* - never the matched
+values themselves, since the point of the tool is to keep that content from
+ending up anywhere it doesn't need to.
+
 ## Restoring a scaffolded response
 
 Once you've sent the scaffolded file to a model and gotten a response back
@@ -68,7 +141,7 @@ model** - it's the only place the original sensitive values are kept.
 | `.pptx`       | author, title, company, ...  | yes: shape text, table cells, group shapes, speaker notes |
 | `.xlsx`       | creator, company, ...        | yes, per cell |
 | `.pbix/.pbit` | n/a                          | yes, but only the plain-JSON parts of the package (see below) - not the imported data model |
-| `.jpg/.png/.tiff/.webp` | EXIF/GPS and other embedded info | no text layer |
+| `.jpg/.png/.tiff/.webp` | EXIF/GPS and other embedded info | yes, visually: text baked into the pixels is found via OCR and blacked out (requires Tesseract; `strip`/`metadata-only` only, no scaffold mode for pixels) |
 | `.pdf`        | document info dictionary      | read-only: redacted text is written to a `.redacted.txt` sidecar, since rewriting a PDF's content streams in place is out of scope |
 
 `.bim` is treated as plain JSON text (SSAS Tabular Model files are JSON since
@@ -97,7 +170,7 @@ malformed rewrite can never corrupt the package.
 
 ```python
 from pathlib import Path
-from drive_stripper.pipeline import process_file
+from drive_stripper.pipeline import process_file, batch_process
 
 result = process_file(
     source=Path("report.docx"),
@@ -108,7 +181,30 @@ result = process_file(
     passphrase="a strong local passphrase",
 )
 print(result.matches_found, result.mapping_path)
+
+# or process a whole directory at once
+results = batch_process(Path("to_share"), Path("sanitized"), mode="strip")
 ```
+
+## Known limitations
+
+Being upfront about scope, since a redaction tool that overstates its
+coverage is worse than one that's honest about the gaps:
+
+- **Detection is regex/OCR-based, not semantic.** It will miss
+  context-dependent secrets that don't match a pattern, and can flag
+  look-alikes (mitigated for credit cards via a Luhn check, and generally
+  via `--review`).
+- **PDF content isn't rewritten in place** - redacted text goes to a
+  `.redacted.txt` sidecar.
+- **Power BI's binary data model is never scanned** - only the JSON parts
+  of a `.pbix`/`.pbit` package.
+- **Image scaffolding isn't supported** - there's no reversible placeholder
+  for pixels, so images only support `strip`/`metadata-only`.
+- **OCR needs Tesseract installed separately**; without it, image pixel
+  text isn't scanned (metadata still is, and the CLI warns explicitly).
+- **The web UI and audit log are local, single-user tooling** - no auth, no
+  multi-tenant story, not meant to be exposed beyond localhost.
 
 ## Tests
 

@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from drive_stripper import scaffold
+import pytest
+
+from drive_stripper import ocr, scaffold
 from drive_stripper.pipeline import process_file
 
 
@@ -83,6 +85,37 @@ def test_strip_mode_on_pptx_redacts_slide_text(tmp_path: Path):
     sanitized = Presentation(str(dest))
     shape_text = sanitized.slides[0].shapes[0].text_frame.text
     assert "jane@acme.com" not in shape_text
+
+
+@pytest.mark.skipif(not ocr.is_available(), reason="tesseract OCR binary not installed")
+def test_strip_mode_on_image_ocr_redacts_pixel_text(tmp_path: Path):
+    from PIL import Image, ImageDraw, ImageFont
+
+    source = tmp_path / "shot.png"
+    dest = tmp_path / "shot.sanitized.png"
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    font = ImageFont.truetype(font_path, 28) if Path(font_path).exists() else ImageFont.load_default()
+    img = Image.new("RGB", (700, 90), color="white")
+    ImageDraw.Draw(img).text((10, 20), "Contact jane.doe@acme.com now", fill="black", font=font)
+    img.save(source)
+
+    result = process_file(source, dest, mode="strip", categories=("email",))
+
+    assert result.image_regions_redacted >= 1
+    assert result.ocr_warning is None
+    assert "jane.doe@acme.com" not in ocr.extract_text(dest)
+
+
+def test_scaffold_mode_on_image_raises(tmp_path: Path):
+    source = tmp_path / "shot.png"
+    from PIL import Image
+
+    Image.new("RGB", (10, 10), color="white").save(source)
+    dest = tmp_path / "shot.out.png"
+    mapping_path = tmp_path / "shot.map.json"
+
+    with pytest.raises(ValueError):
+        process_file(source, dest, mode="scaffold", mapping_destination=mapping_path)
 
 
 def test_metadata_only_mode_leaves_content_untouched(tmp_path: Path):

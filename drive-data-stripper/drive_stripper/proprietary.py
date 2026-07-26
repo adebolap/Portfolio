@@ -26,7 +26,7 @@ _BUILTIN_PATTERNS: dict[str, re.Pattern] = {
     ),
     "ipv4": re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
     "phone": re.compile(r"\b\+?\d[\d\s().-]{7,}\d\b"),
-    "credit_card": re.compile(r"\b(?:\d[ -]?){13,16}\b"),
+    "credit_card": re.compile(r"\b\d(?:[ -]?\d){12,15}\b"),
 }
 
 DEFAULT_CATEGORIES = tuple(_BUILTIN_PATTERNS)
@@ -38,6 +38,22 @@ class Match:
     start: int
     end: int
     value: str
+    confidence: str = "high"
+
+
+def luhn_valid(digits: str) -> bool:
+    """Checksum used by real card numbers - filters out arbitrary 13-16 digit runs."""
+    if not digits.isdigit():
+        return False
+    total = 0
+    for i, ch in enumerate(reversed(digits)):
+        d = int(ch)
+        if i % 2 == 1:
+            d *= 2
+            if d > 9:
+                d -= 9
+        total += d
+    return total % 10 == 0
 
 
 def _custom_term_patterns(terms: list[str]) -> dict[str, re.Pattern]:
@@ -73,7 +89,15 @@ def detect(
     matches: list[Match] = []
     for label, pattern in active.items():
         for m in pattern.finditer(text):
-            matches.append(Match(label=label, start=m.start(), end=m.end(), value=m.group()))
+            value = m.group()
+            if label == "credit_card":
+                digits = re.sub(r"[ -]", "", value)
+                if len(digits) < 13 or not luhn_valid(digits):
+                    continue  # fails the card checksum - almost certainly not a real card
+            confidence = "medium" if label == "phone" else "high"
+            matches.append(
+                Match(label=label, start=m.start(), end=m.end(), value=value, confidence=confidence)
+            )
 
     matches.sort(key=lambda m: m.start)
     return _drop_overlaps(matches)

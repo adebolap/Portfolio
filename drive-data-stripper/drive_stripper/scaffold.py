@@ -72,26 +72,63 @@ def _derive_key(passphrase: str, salt: bytes) -> bytes:
     return base64.urlsafe_b64encode(kdf.derive(passphrase.encode("utf-8")))
 
 
-def save_mapping(mapping: dict[str, str], destination: Path, passphrase: str | None = None) -> None:
-    """Persist a scaffold mapping to disk, encrypting it if a passphrase is given."""
+def generate_key() -> bytes:
+    """Generate a random Fernet key, for team/automation workflows where a
+    shared key file (distributed via your existing secrets manager) is more
+    practical than everyone memorizing the same passphrase."""
+    return Fernet.generate_key()
+
+
+def load_key_file(path: Path) -> bytes:
+    return path.read_bytes().strip()
+
+
+def save_mapping(
+    mapping: dict[str, str],
+    destination: Path,
+    passphrase: str | None = None,
+    key: bytes | None = None,
+) -> None:
+    """Persist a scaffold mapping to disk, encrypting it if given a passphrase or key.
+
+    ``key`` (a raw Fernet key, e.g. from :func:`generate_key`) and
+    ``passphrase`` are mutually exclusive.
+    """
+    if key and passphrase:
+        raise ValueError("pass either key or passphrase, not both")
     payload = json.dumps(mapping).encode("utf-8")
-    if passphrase:
+    if key:
+        destination.write_bytes(Fernet(key).encrypt(payload))
+    elif passphrase:
         salt = os.urandom(_SALT_SIZE)
-        key = _derive_key(passphrase, salt)
-        token = Fernet(key).encrypt(payload)
+        derived = _derive_key(passphrase, salt)
+        token = Fernet(derived).encrypt(payload)
         destination.write_bytes(salt + token)
     else:
         destination.write_bytes(payload)
 
 
-def load_mapping(source: Path, passphrase: str | None = None) -> dict[str, str]:
-    """Load a scaffold mapping previously written by :func:`save_mapping`."""
+def load_mapping(
+    source: Path, passphrase: str | None = None, key: bytes | None = None
+) -> dict[str, str]:
+    """Load a scaffold mapping previously written by :func:`save_mapping`.
+
+    Use the same ``key`` or ``passphrase`` (mutually exclusive) that was
+    used to encrypt it.
+    """
+    if key and passphrase:
+        raise ValueError("pass either key or passphrase, not both")
     raw = source.read_bytes()
-    if passphrase:
-        salt, token = raw[:_SALT_SIZE], raw[_SALT_SIZE:]
-        key = _derive_key(passphrase, salt)
+    if key:
         try:
-            payload = Fernet(key).decrypt(token)
+            payload = Fernet(key).decrypt(raw)
+        except InvalidToken as exc:
+            raise ValueError("Wrong key or corrupted mapping file.") from exc
+    elif passphrase:
+        salt, token = raw[:_SALT_SIZE], raw[_SALT_SIZE:]
+        derived = _derive_key(passphrase, salt)
+        try:
+            payload = Fernet(derived).decrypt(token)
         except InvalidToken as exc:
             raise ValueError("Incorrect passphrase or corrupted mapping file.") from exc
     else:

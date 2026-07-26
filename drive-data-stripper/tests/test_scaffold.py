@@ -60,3 +60,33 @@ def test_wrong_passphrase_raises(tmp_path: Path):
     scaffold.save_mapping(mapping, path, passphrase="right-passphrase")
     with pytest.raises(ValueError):
         scaffold.load_mapping(path, passphrase="wrong-passphrase")
+
+
+def test_mapping_roundtrip_with_key_file(tmp_path: Path):
+    mapping = {"[[SCAFFOLD:email:0]]": "jane@acme.com"}
+    path = tmp_path / "map.enc"
+    key = scaffold.generate_key()
+    scaffold.save_mapping(mapping, path, key=key)
+    assert scaffold.load_mapping(path, key=key) == mapping
+
+
+def test_wrong_key_raises(tmp_path: Path):
+    mapping = {"[[SCAFFOLD:email:0]]": "jane@acme.com"}
+    path = tmp_path / "map.enc"
+    scaffold.save_mapping(mapping, path, key=scaffold.generate_key())
+    with pytest.raises(ValueError):
+        scaffold.load_mapping(path, key=scaffold.generate_key())
+
+
+def test_save_mapping_rejects_both_key_and_passphrase(tmp_path: Path):
+    with pytest.raises(ValueError):
+        scaffold.save_mapping(
+            {"a": "b"}, tmp_path / "map.enc", passphrase="x", key=scaffold.generate_key()
+        )
+
+
+def test_load_key_file_reads_generated_key(tmp_path: Path):
+    key = scaffold.generate_key()
+    path = tmp_path / "team.key"
+    path.write_bytes(key)
+    assert scaffold.load_key_file(path) == key

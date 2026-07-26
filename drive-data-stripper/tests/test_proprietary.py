@@ -38,3 +38,27 @@ def test_overlapping_matches_keep_leftmost_longest():
     matches = proprietary.detect(text, categories=("private_key_block",))
     assert len(matches) == 1
     assert matches[0].value == text
+
+
+def test_luhn_valid_credit_card_is_detected():
+    # a well-known Luhn-valid Visa test number
+    matches = proprietary.detect("card 4111111111111111 on file", categories=("credit_card",))
+    assert len(matches) == 1
+    assert matches[0].value == "4111111111111111"
+
+
+def test_luhn_invalid_digit_run_is_not_flagged_as_credit_card():
+    # same length as a real card number but fails the checksum - e.g. an
+    # arbitrary internal ID that would otherwise be a false positive
+    matches = proprietary.detect("ref 1234567890123456 processed", categories=("credit_card",))
+    assert matches == []
+
+
+def test_phone_matches_are_medium_confidence():
+    matches = proprietary.detect("call 555-123-4567 now", categories=("phone",))
+    assert matches and all(m.confidence == "medium" for m in matches)
+
+
+def test_email_matches_are_high_confidence():
+    matches = proprietary.detect("jane@acme.com", categories=("email",))
+    assert matches and all(m.confidence == "high" for m in matches)
