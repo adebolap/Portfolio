@@ -1,5 +1,17 @@
 # Changelog
 
+## browser-extension/ (concept, unversioned - not part of the pip package)
+
+- Added a Manifest V3 browser extension proof of concept: intercepts
+  sensitive text before it reaches an AI chat's send action, offering
+  Strip / Scaffold / Send anyway, with click-to-restore for scaffold
+  tokens echoed back in a reply. See `browser-extension/README.md` for
+  architecture, scope, and how it was tested (a real bug - an infinite
+  MutationObserver loop - was caught and fixed via the Playwright test).
+- Interactive UX mockup published as a private Claude artifact (visible to
+  the account that generated it, not publicly accessible):
+  https://claude.ai/code/artifact/4bedc402-5dec-4e52-9fe2-b2d4cc4c72e9
+
 ## 0.2.0
 
 - Add PowerPoint (`.pptx`) metadata stripping and content redaction (shapes,

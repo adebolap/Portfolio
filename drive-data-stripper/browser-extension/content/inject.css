@@ -1,0 +1,127 @@
+/* DriveShield injected UI. Scoped under driveshield- prefixes and inline
+   styles only - deliberately does not touch the host page's own styles. */
+
+.driveshield-banner {
+  all: initial;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 8px 0;
+  padding: 12px 14px;
+  border: 1px solid #1b6f63;
+  background: #dcece7;
+  border-radius: 10px;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #10201b;
+  z-index: 2147483000;
+}
+
+.driveshield-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.driveshield-head strong {
+  font-weight: 600;
+}
+
+.driveshield-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: #1b6f63;
+  background: #ffffff;
+  border: 1px solid #1b6f63;
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+.driveshield-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.driveshield-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  border: 1px solid #b45309;
+  color: #4a2a05;
+  background: #f6e6d3;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.driveshield-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.driveshield-btn {
+  all: unset;
+  box-sizing: border-box;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 7px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.driveshield-btn-primary {
+  background: #1b6f63;
+  color: #ffffff;
+}
+.driveshield-btn-secondary {
+  background: transparent;
+  border-color: #1b6f63;
+  color: #1b6f63;
+}
+.driveshield-btn-ghost {
+  background: transparent;
+  border-color: #cbd6d1;
+  color: #5b6b66;
+}
+.driveshield-btn:focus-visible {
+  outline: 2px solid #1b6f63;
+  outline-offset: 2px;
+}
+
+.driveshield-token {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(27, 111, 99, 0.12);
+  border-bottom: 1px dashed #1b6f63;
+  border-radius: 3px;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.driveshield-token.driveshield-restored {
+  background: transparent;
+  border-bottom: none;
+  cursor: text;
+}
+
+.driveshield-restore-all {
+  all: unset;
+  box-sizing: border-box;
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  background: #1b6f63;
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 30px;
+  box-shadow: 0 8px 24px rgba(16, 32, 27, 0.35);
+  cursor: pointer;
+  z-index: 2147483000;
+}
+.driveshield-restore-all:hover {
+  opacity: 0.92;
+}

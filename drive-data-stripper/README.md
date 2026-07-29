@@ -16,6 +16,11 @@ sensitive value for a placeholder token so the model still sees a
 structurally intact document, then restore the real values afterward once
 the model's response comes back.
 
+There's also a browser extension proof of concept (`browser-extension/`)
+that applies the same idea directly at the point of risk - intercepting
+text pasted into a chat's compose box - rather than requiring you to run
+the CLI first. See `browser-extension/README.md` for scope and status.
+
 ## Install
 
 ```bash

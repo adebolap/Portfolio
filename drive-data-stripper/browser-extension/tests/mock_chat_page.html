@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Mock chat page</title></head>
+<body>
+  <div id="thread"></div>
+  <textarea id="composer" aria-label="Message"></textarea>
+  <button id="send-btn" aria-label="Send message">Send</button>
+  <div id="sent-log"></div>
+
+  <script>
+    document.getElementById("send-btn").addEventListener("click", function () {
+      var text = document.getElementById("composer").value;
+      var entry = document.createElement("div");
+      entry.className = "sent-entry";
+      entry.textContent = text;
+      document.getElementById("sent-log").appendChild(entry);
+      document.getElementById("composer").value = "";
+    });
+
+    // simulates an assistant reply that echoes back whatever the page
+    // last received, appended to #thread - used to test token restore.
+    window.__injectReply = function (text) {
+      var reply = document.createElement("div");
+      reply.className = "assistant-reply";
+      reply.textContent = text;
+      document.getElementById("thread").appendChild(reply);
+    };
+  </script>
+</body>
+</html>

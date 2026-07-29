@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DriveShield</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <span class="mark"></span>
+    <h1>DriveShield</h1>
+  </header>
+  <p class="tagline">Catches proprietary data before it reaches an AI chat. Runs entirely in your browser.</p>
+
+  <label class="toggle-row">
+    <span>Enabled on supported sites</span>
+    <input type="checkbox" id="enabled">
+  </label>
+
+  <fieldset id="categories">
+    <legend>Categories to scan</legend>
+  </fieldset>
+
+  <fieldset>
+    <legend>Custom terms (comma-separated)</legend>
+    <textarea id="custom-terms" rows="2" placeholder="e.g. Project Chimera, Acme Corp"></textarea>
+  </fieldset>
+
+  <button id="save" class="btn-primary">Save settings</button>
+  <button id="clear-mapping" class="btn-ghost">Clear saved mapping for this site</button>
+  <p id="status" class="status" role="status"></p>
+
+  <footer>
+    <a href="https://github.com/adebolap/Portfolio/tree/main/drive-data-stripper/browser-extension" target="_blank" rel="noopener">Source &amp; scope notes</a>
+  </footer>
+
+  <script src="../lib/detect.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
