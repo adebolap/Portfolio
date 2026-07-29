@@ -48,7 +48,8 @@ With no other flags, you'll be walked through:
    metadata).
 2. **Categories** - which built-in patterns to scan for: emails, AWS/API
    keys, bearer tokens, PEM private key blocks, IPv4 addresses, phone
-   numbers, credit card numbers - or restrict to a subset.
+   numbers, credit card numbers, high-entropy secrets (see below) - or
+   restrict to a subset.
 3. **Custom terms** - your own vocabulary to redact: company name, client
    names, project codenames.
 4. **Output paths** - where the sanitized file (and, in scaffold mode, the
@@ -71,9 +72,30 @@ drive-strip strip --file report.docx --review
 ```
 
 Credit card matches are already filtered through a Luhn checksum so
-arbitrary digit runs aren't flagged in the first place; phone matches are
-marked `medium` confidence in review since that pattern is intentionally
-broad.
+arbitrary digit runs aren't flagged in the first place; phone and
+high-entropy-secret matches are marked `medium` confidence in review since
+those patterns are intentionally broad.
+
+### High-entropy secret detection
+
+Alongside patterns for known secret *shapes* (AWS keys, `sk-`/`api-`
+prefixes, ...), the `high_entropy_secret` category catches random-looking
+tokens that don't match any known prefix - the kind of internal/custom API
+key regex alone would always miss - by computing the Shannon entropy of any
+20+ character alphanumeric run and flagging it if it looks random rather
+than like a word or identifier (thresholds tuned separately for hex-only
+strings vs. general base64-like ones).
+
+This is a real, measurable improvement over pure pattern matching, but it's
+not magic: entropy can't distinguish a genuine secret from any other
+random-looking string - a git commit SHA, an MD5 hash, a session ID - so
+expect occasional matches on things that aren't actually sensitive. That's
+exactly why it's `medium` confidence and why `--review` exists, rather than
+redacting every hit with the same certainty as an email address. It won't
+flag structured, low-entropy identifiers (UUIDs without dashes, camelCase
+variable names, repeated text) - see `drive_stripper/proprietary.py` for the
+concrete threshold values and the real-token samples they were checked
+against.
 
 ### Sanitizing a whole directory
 
@@ -196,10 +218,15 @@ results = batch_process(Path("to_share"), Path("sanitized"), mode="strip")
 Being upfront about scope, since a redaction tool that overstates its
 coverage is worse than one that's honest about the gaps:
 
-- **Detection is regex/OCR-based, not semantic.** It will miss
-  context-dependent secrets that don't match a pattern, and can flag
-  look-alikes (mitigated for credit cards via a Luhn check, and generally
-  via `--review`).
+- **Detection is regex/OCR/entropy-based, not semantic.** It will miss
+  context-dependent secrets with no distinctive shape (a plain name, a
+  sentence describing something sensitive with no pattern to match), and
+  can flag look-alikes - mitigated for credit cards via a Luhn check, for
+  random-looking custom tokens via entropy scoring (medium confidence, not
+  a guarantee), and generally via `--review`. Closing this gap further
+  would mean local NER/ML models (e.g. Presidio) - legitimate to add since
+  they'd run fully on-device with no data leaving the machine, unlike
+  calling out to a cloud AI API, which would defeat the tool's purpose.
 - **PDF content isn't rewritten in place** - redacted text goes to a
   `.redacted.txt` sidecar.
 - **Power BI's binary data model is never scanned** - only the JSON parts

@@ -62,3 +62,54 @@ def test_phone_matches_are_medium_confidence():
 def test_email_matches_are_high_confidence():
     matches = proprietary.detect("jane@acme.com", categories=("email",))
     assert matches and all(m.confidence == "high" for m in matches)
+
+
+def test_high_entropy_secret_is_detected_and_medium_confidence():
+    # shaped like a real API token (github/slack/stripe-style): mixed case + digits
+    token = "kJ8x2Qp9zR7mN4vT6wL1sD3fG5hY0aBc"
+    matches = proprietary.detect(f"key: {token}", categories=("high_entropy_secret",))
+    assert len(matches) == 1
+    assert matches[0].value == token
+    assert matches[0].confidence == "medium"
+
+
+def test_random_hex_secret_is_detected_via_lower_hex_threshold():
+    hex_secret = "9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c"
+    matches = proprietary.detect(f"secret={hex_secret}", categories=("high_entropy_secret",))
+    assert len(matches) == 1
+    assert matches[0].value == hex_secret
+
+
+def test_low_entropy_identifier_is_not_flagged():
+    # a normal camelCase identifier reads as language-like, not random
+    text = "someVeryLongVariableNameForTesting is unused"
+    matches = proprietary.detect(text, categories=("high_entropy_secret",))
+    assert matches == []
+
+
+def test_repeated_text_is_not_flagged_as_high_entropy():
+    text = "thisisthisisthisisthisis is a low entropy repeated run"
+    matches = proprietary.detect(text, categories=("high_entropy_secret",))
+    assert matches == []
+
+
+def test_uuid_without_dashes_is_not_flagged_high_entropy():
+    # a known false-positive shape for entropy scanning generally (real
+    # secret-scanning tools have the same trade-off) - documented, not hidden
+    uuid_nodash = "550e8400e29b41d4a716446655440000"
+    matches = proprietary.detect(f"id: {uuid_nodash}", categories=("high_entropy_secret",))
+    assert matches == []
+
+
+def test_aws_key_is_not_double_reported_as_high_entropy_secret():
+    matches = proprietary.detect(
+        "key=AKIAABCDEFGHIJKLMNOP rotate it", categories=("aws_access_key", "high_entropy_secret")
+    )
+    assert len(matches) == 1
+    assert matches[0].label == "aws_access_key"
+
+
+def test_shannon_entropy_helper_extremes():
+    assert proprietary.shannon_entropy("") == 0.0
+    assert proprietary.shannon_entropy("aaaaaaaa") == 0.0
+    assert proprietary.shannon_entropy("ab") == 1.0  # 2 equally likely symbols = 1 bit

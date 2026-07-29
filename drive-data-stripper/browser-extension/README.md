@@ -28,7 +28,13 @@ This has not been submitted to the Chrome Web Store. It's built and tested
   credit cards, same confidence levels) plus the scaffold token
   apply/restore logic from `scaffold.py`. No network calls, nothing leaves
   the browser - the mapping between a scaffold token and its real value
-  lives only in `chrome.storage.local`, scoped per-site.
+  lives only in `chrome.storage.local`, scoped per-site. This includes
+  `high_entropy_secret`: a Shannon-entropy check that flags random-looking
+  tokens (custom API keys with no known prefix) that plain patterns miss -
+  medium confidence, since entropy alone can't tell a real secret from a
+  git SHA or session ID. See the main README's "High-entropy secret
+  detection" section for the threshold values and what it deliberately
+  does/doesn't flag.
 - **No metadata engine at all.** File metadata stripping (EXIF, docProps)
   needs the same Python libraries as above; there's nothing analogous here
   yet.

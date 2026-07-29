@@ -16,10 +16,47 @@
     private_key_block: /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
     ipv4: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
     phone: /\b\+?\d[\d\s().-]{7,}\d\b/g,
-    credit_card: /\b\d(?:[ -]?\d){12,15}\b/g
+    credit_card: /\b\d(?:[ -]?\d){12,15}\b/g,
+    // last, so it only ever wins ties on spans nothing more specific claimed
+    high_entropy_secret: /\b[A-Za-z0-9+/_-]{20,}\b/g
   };
 
   var DEFAULT_CATEGORIES = Object.keys(BUILTIN_PATTERNS);
+
+  var HEX_CHARS = "0123456789abcdefABCDEF";
+  // Tuned against real token shapes (GitHub/Slack/Stripe-style secrets score
+  // ~5.0-5.3, hex secrets/git SHAs ~3.5-3.9) vs. common false positives
+  // (camelCase/snake_case identifiers ~3.8-4.0, UUIDs without dashes ~3.25).
+  // Entropy can't distinguish a real secret from a git SHA or session ID -
+  // both are just random-looking strings - hence "medium" confidence rather
+  // than redacting with the same certainty as an email or AWS key.
+  var HEX_ENTROPY_THRESHOLD = 3.4;
+  var GENERAL_ENTROPY_THRESHOLD = 4.2;
+
+  function shannonEntropy(s) {
+    if (!s) return 0;
+    var counts = {};
+    for (var i = 0; i < s.length; i++) counts[s[i]] = (counts[s[i]] || 0) + 1;
+    var length = s.length;
+    var entropy = 0;
+    Object.keys(counts).forEach(function (ch) {
+      var p = counts[ch] / length;
+      entropy -= p * (Math.log(p) / Math.LN2);
+    });
+    return entropy;
+  }
+
+  function isHighEntropySecret(value) {
+    var isHex = true;
+    for (var i = 0; i < value.length; i++) {
+      if (HEX_CHARS.indexOf(value[i]) === -1) {
+        isHex = false;
+        break;
+      }
+    }
+    var threshold = isHex ? HEX_ENTROPY_THRESHOLD : GENERAL_ENTROPY_THRESHOLD;
+    return shannonEntropy(value) >= threshold;
+  }
 
   function luhnValid(digits) {
     if (!/^\d+$/.test(digits)) return false;
@@ -69,8 +106,10 @@
         if (label === "credit_card") {
           var digits = value.replace(/[ -]/g, "");
           if (digits.length < 13 || !luhnValid(digits)) continue;
+        } else if (label === "high_entropy_secret" && !isHighEntropySecret(value)) {
+          continue;
         }
-        var confidence = label === "phone" ? "medium" : "high";
+        var confidence = label === "phone" || label === "high_entropy_secret" ? "medium" : "high";
         matches.push({ label: label, start: m.index, end: m.index + value.length, value: value, confidence: confidence });
       }
     });
@@ -144,6 +183,8 @@
     applyScaffold: applyScaffold,
     restore: restore,
     findRemainingTokens: findRemainingTokens,
-    luhnValid: luhnValid
+    luhnValid: luhnValid,
+    shannonEntropy: shannonEntropy,
+    isHighEntropySecret: isHighEntropySecret
   };
 })(typeof window !== "undefined" ? window : globalThis);

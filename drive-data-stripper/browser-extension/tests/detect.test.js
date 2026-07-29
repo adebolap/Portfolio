@@ -80,6 +80,48 @@ test("scaffold index offset keeps tokens unique across chunks", () => {
   assert.equal(D.restore(resultB.text, combined), "john@acme.com");
 });
 
+test("high entropy secret is detected and medium confidence", () => {
+  const token = "kJ8x2Qp9zR7mN4vT6wL1sD3fG5hY0aBc";
+  const matches = D.detect(`key: ${token}`, ["high_entropy_secret"], []);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].value, token);
+  assert.equal(matches[0].confidence, "medium");
+});
+
+test("random hex secret is detected via the lower hex threshold", () => {
+  const hexSecret = "9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c";
+  const matches = D.detect(`secret=${hexSecret}`, ["high_entropy_secret"], []);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].value, hexSecret);
+});
+
+test("low entropy identifier is not flagged", () => {
+  const matches = D.detect("someVeryLongVariableNameForTesting is unused", ["high_entropy_secret"], []);
+  assert.deepEqual(matches, []);
+});
+
+test("repeated text is not flagged as high entropy", () => {
+  const matches = D.detect("thisisthisisthisisthisis is a low entropy repeated run", ["high_entropy_secret"], []);
+  assert.deepEqual(matches, []);
+});
+
+test("uuid without dashes is not flagged high entropy", () => {
+  const matches = D.detect("id: 550e8400e29b41d4a716446655440000", ["high_entropy_secret"], []);
+  assert.deepEqual(matches, []);
+});
+
+test("aws key is not double reported as high entropy secret", () => {
+  const matches = D.detect("key=AKIAABCDEFGHIJKLMNOP rotate it", ["aws_access_key", "high_entropy_secret"], []);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].label, "aws_access_key");
+});
+
+test("shannonEntropy helper extremes", () => {
+  assert.equal(D.shannonEntropy(""), 0);
+  assert.equal(D.shannonEntropy("aaaaaaaa"), 0);
+  assert.equal(D.shannonEntropy("ab"), 1);
+});
+
 test("findRemainingTokens reports unmapped tokens", () => {
   assert.deepEqual(D.findRemainingTokens("value is [[SCAFFOLD:email:0]] here"), ["[[SCAFFOLD:email:0]]"]);
   assert.deepEqual(D.findRemainingTokens("no tokens here"), []);

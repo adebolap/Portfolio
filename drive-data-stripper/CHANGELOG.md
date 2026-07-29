@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- Add `high_entropy_secret` detection: a Shannon-entropy check (separate
+  hex vs. general thresholds, tuned against real token shapes vs. common
+  false positives like UUIDs/camelCase identifiers) that catches
+  random-looking custom tokens with no known prefix - the biggest gap
+  pure pattern-matching had. Medium confidence, ported identically to the
+  browser extension's JS engine with matching parity tests.
+
 ## browser-extension/ (concept, unversioned - not part of the pip package)
 
 - Added a Manifest V3 browser extension proof of concept: intercepts
